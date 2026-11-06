@@ -1,0 +1,85 @@
+# sbar
+
+A live-updating status bar at the bottom of your terminal, written in Rust.
+
+```
+ CPU  12% ██░░░░░░░░░░░░░░ Xeon 8259CL 48c │  RAM  42% ██████░░░░░░░░░░ 54/128G  17:32:07
+  0  3%  1 12%  2  8%  3  0%  4  5%  5 22% │ DISK   2% ░░░░░░░░░░░░░░░░ 11/1858G
+  6  1%  7  4%  8  0%  9 15% 10  2% 11  7% │ Download   1.2 MB/s Upload   340 KB/s
+ GPU0  45% ██████░░░░░░░░░░ │ GPU1  38% █████░░░░░░░░░░░ │ NVIDIA A100
+ MEM0  62% █████████░░░░░░░ │ MEM1  51% ████████░░░░░░░░ │ 40G ea
+```
+
+Updates every second. Bars scale to fill your terminal width. Per-core CPU grid, multi-GPU utilization and VRAM, network download/upload throughput.
+
+Narrow terminals use a compact layout. Short terminals show fewer metrics to leave room for the shell. Metrics run in a background worker; GPU probes time out after 750 ms so a slow driver cannot block typing.
+
+## Install
+
+Build from source with current stable Rust and Cargo, Git, Make, and a C toolchain/linker. On macOS, install the Xcode Command Line Tools; on Linux, install your distribution's C build tools. Python 3 is needed only for the regression tests.
+
+```bash
+git clone https://github.com/funkydude755/sbar.git
+cd sbar
+git checkout v0.2.1
+make install PREFIX="$HOME/.local"
+"$HOME/.local/bin/sbar" --version
+```
+
+Add `$HOME/.local/bin` to your shell's `PATH` to run `sbar` by name. To use a different installation directory, set `PREFIX`; the default is `/usr/local`, which must be writable by your user:
+
+```bash
+make install PREFIX=/path/to/prefix
+```
+
+The executable is installed in `PREFIX/bin` and license notices in `PREFIX/share/licenses/sbar`. Run `make uninstall` with the same `PREFIX` to remove them.
+
+See [CHANGELOG.md](CHANGELOG.md) for release changes.
+
+## Usage
+
+```bash
+sbar
+```
+
+This launches your shell inside a PTY with the status bar pinned to the bottom. Type `exit` or Ctrl+D to return to your normal shell.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `sbar` | Launch shell with status bar |
+| `sbar --once` | Print metrics once and exit |
+| `sbar --version` | Print version |
+| `sbar --help` | Show help |
+
+## How it works
+
+1. `sbar` allocates a PTY pair, forks your `$SHELL` into the slave side, and puts the real terminal in raw mode
+2. A poll loop forwards I/O between your terminal and the PTY; a background worker collects CPU/RAM/GPU/Disk/Network metrics every second
+3. The status bar is painted below the shell's scroll region
+4. Terminal resizes (SIGWINCH) dynamically adjust the PTY, scroll region, and bar layout
+5. On shell exit, SIGTERM, or SIGHUP, the terminal settings are restored and the child shell is cleaned up
+
+## Terminal compatibility
+
+Use an interactive terminal with ANSI cursor controls and scroll-region support. When a program enters the alternate screen using modes 47, 1047, or 1049, `sbar` pauses the bar and gives the program the full terminal dimensions. The bar resumes when the program leaves the alternate screen. Painting is deferred while an escape sequence or UTF-8 character is incomplete.
+
+`sbar` forwards shell output; it is not a complete terminal emulator. An ordinary clear-screen command can erase the bar until the next metrics refresh. Programs that manage custom scroll regions or use unusual terminal modes can still disrupt the display; run them outside `sbar` if needed. `sbar --once` prints a snapshot without wrapping a shell.
+
+## Why Rust?
+
+The bar runs continuously. CPU, memory, disk, and network metrics use native system APIs. GPU monitoring uses `ioreg` on Apple Silicon or `nvidia-smi` on Linux when available.
+
+## Development
+
+With Rust and Python 3 installed, run `make test` for unit tests and isolated PTY regression tests against the debug binary. CI runs on macOS and Linux and checks formatting, Clippy, unit tests, and PTY regressions against both debug and release binaries.
+
+## Supported platforms
+
+- **macOS** — Apple Silicon, Intel
+- **Linux** — GPU metrics are optional and use `nvidia-smi` for NVIDIA GPUs
+
+## License
+
+[MIT](LICENSE). Notices for the locked macOS and Linux dependencies are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

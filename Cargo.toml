@@ -1,0 +1,19 @@
+[package]
+name = "sbar"
+version = "0.2.1"
+edition = "2021"
+description = "Persistent status bar for your terminal"
+license = "MIT"
+repository = "https://github.com/funkydude755/sbar"
+
+[dependencies]
+sysinfo = "0.35"
+signal-hook = "0.3"
+libc = "0.2"
+unicode-width = "0.2"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+codegen-units = 1
