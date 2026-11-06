@@ -16,6 +16,18 @@ Narrow terminals use a compact layout. Short terminals show fewer metrics to lea
 
 ## Install
 
+### Homebrew (macOS and Linux)
+
+```bash
+brew install funkydude755/tap/sbar
+```
+
+The [public tap](https://github.com/funkydude755/homebrew-tap) builds the tagged release and installs Rust if needed. No GitHub account or organization access is required.
+
+If `sbar` is already installed from another tap, run `brew uninstall sbar` before installing it from this tap.
+
+### From source
+
 Build from source with current stable Rust and Cargo, Git, Make, and a C toolchain/linker. On macOS, install the Xcode Command Line Tools; on Linux, install your distribution's C build tools. Python 3 is needed only for the regression tests.
 
 ```bash
