@@ -271,6 +271,18 @@ class PtyTests(unittest.TestCase):
                 return
         self.fail("shell did not receive new terminal dimensions")
 
+    def wait_for_eight_gpus(self, session, screen):
+        deadline = time.monotonic() + 5
+        while True:
+            rendered = "\n".join("".join(row) for row in screen.cells)
+            if all(f"GPU{i}" in rendered for i in range(8)):
+                return
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                self.fail("eight-GPU fixture was not rendered; a CPU-only sample cannot establish the layout precondition")
+            output = read_until(session.master, b"GPU7", timeout=remaining)
+            feed_screen(session, screen, output)
+
     def test_normal_exit_preserves_output_and_status(self):
         shell = self.script("exit-shell", "import sys\nprint('FINAL_MARKER',flush=True)\nsys.exit(7)\n")
         session = self.session(shell)
@@ -443,11 +455,15 @@ class PtyTests(unittest.TestCase):
         # Eight mocked GPUs take one/two wide rows but eight compact rows. This
         # makes a width-only resize grow the bar without discarding screen cells.
         gate = self.root / "prompt-forwarded"
-        probe = self.script("ioreg" if sys.platform == "darwin" else "nvidia-smi",
-                            "import os,sys,time\nfrom pathlib import Path\n"
-                            "while not Path(os.environ['SBAR_TEST_GATE']).exists(): time.sleep(0.001)\n"
-                            "print(('\"PerformanceStatistics\" = {\"Device Utilization %\"=1}\\n'"
-                            " if sys.platform=='darwin' else 'GPU,1,1,1024\\n')*8)\n")
+        probe = self.root / ("ioreg" if sys.platform == "darwin" else "nvidia-smi")
+        gpu_line = ('"PerformanceStatistics" = {"Device Utilization %"=1}'
+                    if sys.platform == "darwin" else "GPU,1,1,1024")
+        # A Python interpreter/import startup can exceed the real probe's 750 ms
+        # deadline on a loaded runner. Use the shell's builtin printf instead.
+        probe.write_text("#!/bin/sh\n"
+                         'while [ ! -e "$SBAR_TEST_GATE" ]; do /bin/sleep 0.01; done\n'
+                         "printf '%s\\n' " + " ".join("'" + gpu_line + "'" for _ in range(8)) + "\n")
+        probe.chmod(0o755)
         shell = self.script("bottom-shell", "import os,tty\ntty.setraw(0)\n"
                             "os.write(1,b'\\x1b[24;15HPROMPT')\n"
                             "while os.read(0,1)==b's':\n"
@@ -461,10 +477,7 @@ class PtyTests(unittest.TestCase):
         self.assertIn(b"PROMPT", output)
         feed_screen(session, screen, output)
         gate.touch()  # The first GPU sample follows the already-forwarded prompt.
-        output = read_until(session.master, b"CPU", timeout=4)
-        self.assertIn(b"CPU", output)
-        feed_screen(session, screen, output)
-        feed_screen(session, screen, read_until(session.master, b"NEVER", timeout=0.1))
+        self.wait_for_eight_gpus(session, screen)
         self.assertEqual(screen.y, screen.bottom)
         self.assertEqual(screen.x, 14 + len("PROMPT"))
         self.assertIn("PROMPT", "".join(screen.cells[screen.y]))
@@ -476,11 +489,17 @@ class PtyTests(unittest.TestCase):
             self.assertEqual(screen.y, min(previous_y, screen.bottom))
             self.assertEqual(screen.x, 14 + len("PROMPT"))
             self.assertIn("PROMPT", "".join(screen.cells[screen.y]))
+        # GPU probes may fail independently of the layout. Measure both sides
+        # only after the intended eight-GPU sample has actually been displayed.
+        self.wait_for_eight_gpus(session, screen)
         previous_bottom = screen.bottom
-        screen.resize(24, 60)
-        fcntl.ioctl(session.slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 60, 0, 0))
+        # 60 columns can still fit the full layout on a runner with a short CPU
+        # name and few cores. 32 forces compact rows independently of that host.
+        screen.resize(24, 32)
+        fcntl.ioctl(session.slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 32, 0, 0))
         os.kill(session.pid, signal.SIGWINCH)
-        self.sync_screen_size(session, screen, 60)
+        self.sync_screen_size(session, screen, 32)
+        self.wait_for_eight_gpus(session, screen)
         self.assertLess(screen.bottom, previous_bottom, "narrow layout must reserve more GPU rows")
         self.assertEqual(screen.y, screen.bottom)
         self.assertIn("PROMPT", "".join(screen.cells[screen.y]))

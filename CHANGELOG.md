@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Make the terminal layout regression independent of runner CPU labels and core counts, and verify that all mocked GPUs are present before checking compact-layout resize behavior.
+
 ## 0.2.1
 
 - Restore terminal settings on shell exit, SIGTERM, and SIGHUP, and clean up shell and GPU-probe processes.

@@ -21,7 +21,7 @@ Build from source with current stable Rust and Cargo, Git, Make, and a C toolcha
 ```bash
 git clone https://github.com/funkydude755/sbar.git
 cd sbar
-git checkout v0.2.1
+git checkout v0.2.2
 make install PREFIX="$HOME/.local"
 "$HOME/.local/bin/sbar" --version
 ```
