@@ -2,9 +2,9 @@
 
 Keep CPU, RAM, GPU, disk, and network stats visible while you work in your shell. A persistent terminal status bar for macOS and Linux, written in Rust.
 
-![Animated illustration of sbar: a build runs above a persistent status bar with changing CPU, RAM, GPU, disk, and network metrics.](assets/demo.svg)
+![Animated illustration of sbar: a model trains on two GPUs above a persistent status bar with changing CPU, RAM, GPU, disk, and network metrics.](assets/demo.svg)
 
-*Illustrative demo with example metrics. [View the still image](assets/social-preview.png).*
+*Illustrative model-training demo with example metrics and output. [View the still image](assets/social-preview.png).*
 
 Try the stable release on macOS or Linux:
 

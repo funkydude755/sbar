@@ -1,6 +1,6 @@
 # Repository visuals
 
-- `demo.svg`: animated README illustration, with a static fallback for reduced-motion preferences. Metrics and command output are illustrative, not a benchmark or screen recording.
+- `demo.svg`: animated README illustration of model training on two GPUs, with a static fallback for reduced-motion preferences. Metrics and training output are illustrative, not a benchmark or screen recording. The example `train.py` represents a user's training script; it is not included in sbar.
 - `social-preview.png`: 1280 × 640 share card for GitHub's social preview and launch posts.
 - `social-preview.svg`: editable vector version of that share card.
 
