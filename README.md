@@ -22,7 +22,9 @@ Narrow terminals use a compact layout. Short terminals show fewer metrics to lea
 brew install funkydude755/tap/sbar
 ```
 
-The [public tap](https://github.com/funkydude755/homebrew-tap) builds the tagged release and installs Rust if needed. No GitHub account or organization access is required.
+The [public tap](https://github.com/funkydude755/homebrew-tap) provides prebuilt bottles for Apple Silicon and Intel Macs on macOS 15 or newer, and for Linux on x86-64 and ARM64. Normal bottle installs do not need Rust or LLVM. No GitHub account or organization access is required.
+
+Without a compatible bottle, or with `--build-from-source`, Homebrew builds the tagged release and installs Rust and its build dependencies. Older Linux distributions may need Homebrew's runtime libraries.
 
 If `sbar` is already installed from another tap, run `brew uninstall sbar` before installing it from this tap.
 
