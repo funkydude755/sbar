@@ -1,16 +1,21 @@
 # sbar
 
-A live-updating status bar at the bottom of your terminal, written in Rust.
+Keep CPU, RAM, GPU, disk, and network stats visible while you work in your shell. A persistent terminal status bar for macOS and Linux, written in Rust.
 
-**v0.2.3 beta:** the disk-selection and mixed-GPU fixes are available in the source release below. Homebrew currently installs the stable v0.2.2 release with prebuilt bottles.
+![Animated illustration of sbar: a build runs above a persistent status bar with changing CPU, RAM, GPU, disk, and network metrics.](assets/demo.svg)
 
+*Illustrative demo with example metrics. [View the still image](assets/social-preview.png).*
+
+Try the stable release on macOS or Linux:
+
+```bash
+brew install funkydude755/tap/sbar
+sbar
 ```
- CPU  12% ██░░░░░░░░░░░░░░ Xeon 8259CL 48c │  RAM  42% ██████░░░░░░░░░░ 54/128G  17:32:07
-  0  3%  1 12%  2  8%  3  0%  4  5% 5 22% │ DISK / 2% ░░░░░░░░░░░░░░░░ 11/1858G
-  6  1%  7  4%  8  0%  9 15% 10  2% 11  7% │ Download   1.2 MB/s Upload   340 KB/s
- GPU0  45% ██████░░░░░░░░░░ │ GPU1  38% █████░░░░░░░░░░░ │ NVIDIA A100
- MEM0  62% █████████░░░░░░░ │ MEM1  51% ████████░░░░░░░░ │ 40G ea
-```
+
+Type `exit` or Ctrl+D to return to your normal shell. [Installation details](#install) · [How it works](#how-it-works) · [Report a bug](https://github.com/funkydude755/sbar/issues/new)
+
+**v0.2.3 beta:** the disk-selection and mixed-GPU fixes are available in the [source release](#from-source-v023-beta). Homebrew currently installs stable v0.2.2 with prebuilt bottles.
 
 Updates every second. Bars scale to fill your terminal width. Per-core CPU grid, multi-GPU utilization and VRAM, network download/upload throughput.
 
@@ -21,10 +26,6 @@ Narrow terminals use a compact layout. Short terminals show fewer metrics to lea
 ## Install
 
 ### Homebrew (macOS and Linux)
-
-```bash
-brew install funkydude755/tap/sbar
-```
 
 The [public tap](https://github.com/funkydude755/homebrew-tap) provides prebuilt bottles for Apple Silicon and Intel Macs on macOS 15 or newer, and for Linux on x86-64 and ARM64. Normal bottle installs do not need Rust or LLVM. No GitHub account or organization access is required.
 
