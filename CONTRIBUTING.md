@@ -28,7 +28,7 @@ cargo build --release --locked
 python3 tests/test_pty.py target/release/sbar
 ```
 
-The PTY tests use disposable terminals. CI runs on macOS and Linux; you do not need both systems locally. Never test terminal cleanup against someone else's active terminal.
+The PTY tests use disposable terminals. Run the checks locally and report which operating system and architecture you tested; you do not need both supported systems locally. This repository does not run GitHub CI. Never test terminal cleanup against someone else's active terminal.
 
 Discuss substantial features in an issue first. Maintainer review and support are provided as time permits, with no promised response time. Please keep discussions respectful and constructive.
 

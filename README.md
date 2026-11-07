@@ -91,7 +91,7 @@ The bar runs continuously. CPU, memory, disk, and network metrics use native sys
 
 ## Development
 
-With Rust and Python 3 installed, run `make test` for unit tests and isolated PTY regression tests against the debug binary. CI runs on macOS and Linux and checks formatting, Clippy, unit tests, and PTY regressions against both debug and release binaries.
+With Rust and Python 3 installed, run `make test` for unit tests and isolated PTY regression tests against the debug binary. Run the full local validation commands in [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes or preparing a release. This repository does not run GitHub CI.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for bug reports and pull requests, [SECURITY.md](SECURITY.md) for private vulnerability reports, and [RELEASING.md](RELEASING.md) for the release checklist.
 

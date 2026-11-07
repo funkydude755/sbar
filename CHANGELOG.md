@@ -6,6 +6,7 @@
 - Show individual models and memory capacities for mixed GPUs; use a shared capacity only when all GPUs match.
 - Add regression coverage for disk selection, disk labels, and mixed GPU displays.
 - Document the source beta, contribution process, private vulnerability reporting, and release workflow. Homebrew remains on the stable v0.2.2 release.
+- Use local validation for releases and contributions; remove the GitHub CI workflow.
 
 ## 0.2.2
 
