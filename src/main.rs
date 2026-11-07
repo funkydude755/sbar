@@ -57,6 +57,7 @@ struct Metrics {
     ram_total_gb: u64,
     gpus: Vec<GpuInfo>,
     disk_pct: Option<f64>,
+    disk_mount_label: &'static str,
     disk_used_gb: u64,
     disk_total_gb: u64,
     net_down_bps: f64,
@@ -159,14 +160,9 @@ fn get_gpu_info(stop: &AtomicBool) -> Vec<GpuInfo> {
             let mem_used: u64 = parts[2].trim().parse().unwrap_or(0);
             let mem_total: u64 = parts[3].trim().parse().unwrap_or(0);
             let name = parts[0].trim().to_string();
-            let label = if gpus.is_empty() {
-                name
-            } else {
-                format!("{} #{}", parts[0].trim(), gpus.len())
-            };
             gpus.push(GpuInfo {
                 pct,
-                label,
+                label: name,
                 mem_used_mb: mem_used,
                 mem_total_mb: mem_total,
             });
@@ -181,6 +177,24 @@ fn get_gpu_info(_stop: &AtomicBool) -> Vec<GpuInfo> {
 }
 
 // ── Collect metrics ──────────────────────────────────────────────────────────
+
+fn system_disk_usage<'a>(
+    disks: impl Iterator<Item = (&'a std::path::Path, u64, u64)>,
+) -> Option<(&'static str, u64, u64)> {
+    disks
+        .filter_map(|(mount, total, available)| {
+            let (priority, label) = match mount.to_str()? {
+                // The writable Data volume holds user files on modern macOS.
+                #[cfg(target_os = "macos")]
+                "/System/Volumes/Data" => (0, "Data"),
+                "/" => (1, "/"),
+                _ => return None,
+            };
+            Some((priority, label, total, available))
+        })
+        .min_by_key(|disk| disk.0)
+        .map(|(_, label, total, available)| (label, total, available))
+}
 
 fn collect_metrics(
     sys: &System,
@@ -202,20 +216,22 @@ fn collect_metrics(
         0.0
     };
 
-    let (disk_pct, disk_used_gb, disk_total_gb) = disks
-        .list()
-        .first()
-        .map(|d| {
-            let t = d.total_space();
-            let u = t.saturating_sub(d.available_space());
-            let pct = if t > 0 {
-                (u as f64 / t as f64) * 100.0
-            } else {
-                0.0
-            };
-            (Some(pct), u / 1_073_741_824, t / 1_073_741_824)
-        })
-        .unwrap_or((None, 0, 0));
+    let (disk_pct, disk_mount_label, disk_used_gb, disk_total_gb) = system_disk_usage(
+        disks
+            .list()
+            .iter()
+            .map(|d| (d.mount_point(), d.total_space(), d.available_space())),
+    )
+    .map(|(label, t, available)| {
+        let u = t.saturating_sub(available);
+        let pct = if t > 0 {
+            (u as f64 / t as f64) * 100.0
+        } else {
+            0.0
+        };
+        (Some(pct), label, u / 1_073_741_824, t / 1_073_741_824)
+    })
+    .unwrap_or((None, "", 0, 0));
 
     Metrics {
         cpu_pct,
@@ -227,6 +243,7 @@ fn collect_metrics(
         ram_total_gb: total_mem / 1_073_741_824,
         gpus,
         disk_pct,
+        disk_mount_label,
         disk_used_gb,
         disk_total_gb,
         net_down_bps,
@@ -330,11 +347,54 @@ fn gpu_col_layout(n: usize, suffix_width: usize, cols: usize) -> (usize, usize, 
     (bw, extra, bw >= 3)
 }
 
-/// GPU utilization row
+fn gpu_model_label(gpus: &[GpuInfo]) -> String {
+    let Some(first) = gpus.first() else {
+        return String::new();
+    };
+    if gpus.iter().all(|gpu| gpu.label == first.label) {
+        return first.label.clone();
+    }
+    gpus.iter()
+        .enumerate()
+        .map(|(i, gpu)| format!("GPU{i} {}", gpu.label))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn gpu_vram_label(gpus: &[GpuInfo]) -> String {
+    let Some(first) = gpus.first() else {
+        return String::new();
+    };
+    let capacity = |mb: u64| {
+        if mb == 0 {
+            "unknown".to_string()
+        } else {
+            format!("{:.0}G", mb as f64 / 1024.0)
+        }
+    };
+    if gpus
+        .iter()
+        .all(|gpu| gpu.mem_total_mb == first.mem_total_mb)
+    {
+        let label = capacity(first.mem_total_mb);
+        return if gpus.len() > 1 {
+            format!("{label} ea")
+        } else {
+            label
+        };
+    }
+    gpus.iter()
+        .enumerate()
+        .map(|(i, gpu)| format!("MEM{i} {}", capacity(gpu.mem_total_mb)))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// GPU utilization row.
 fn render_gpu_util_row(gpus: &[GpuInfo], bw: usize, extra: usize, show: bool, bg: &str) -> String {
     let rb = format!("{RST}{bg}");
     let sep = format!("{rb} {DIM}│{rb} ");
-    let model = gpus.first().map(|g| g.label.as_str()).unwrap_or("");
+    let model = gpu_model_label(gpus);
     let mut o = String::new();
     write!(o, "{bg}").unwrap();
     for (i, gpu) in gpus.iter().enumerate() {
@@ -376,11 +436,7 @@ fn render_gpu_util_row(gpus: &[GpuInfo], bw: usize, extra: usize, show: bool, bg
 fn render_gpu_vram_row(gpus: &[GpuInfo], bw: usize, extra: usize, show: bool, bg: &str) -> String {
     let rb = format!("{RST}{bg}");
     let sep = format!("{rb} {DIM}│{rb} ");
-    let total_g = gpus
-        .first()
-        .map(|g| g.mem_total_mb as f64 / 1024.0)
-        .unwrap_or(0.0);
-    let vram_label = format!("{:.0}G ea", total_g);
+    let vram_label = gpu_vram_label(gpus);
     let mut o = String::new();
     write!(o, "{bg}").unwrap();
     for (i, gpu) in gpus.iter().enumerate() {
@@ -456,8 +512,8 @@ fn render_compact(m: &Metrics, cols: usize, bg: &str) -> Vec<String> {
     )];
     if let Some(disk) = m.disk_pct {
         lines.push(format!(
-            " {COLOR_DISK}DISK {disk:3.0}%{RST} {}/{}G",
-            m.disk_used_gb, m.disk_total_gb
+            " {COLOR_DISK}DISK {} {disk:3.0}%{RST} {}/{}G",
+            m.disk_mount_label, m.disk_used_gb, m.disk_total_gb
         ));
     }
     if m.net_down_bps > 0.0 || m.net_up_bps > 0.0 {
@@ -487,14 +543,19 @@ fn render_lines(m: &Metrics, cols: usize, bg: &str) -> Vec<String> {
     let disk_sfx = m
         .disk_pct
         .map(|_| format!("{}/{}G", m.disk_used_gb, m.disk_total_gb));
+    let disk_label = format!("DISK {}", m.disk_mount_label);
     let clock = chrono_time();
 
-    // Right panel prefix: " RAM NNN% " or "DISK NNN% " = 10 visible chars
+    // Reserve enough width for the disk's mount label as well as the RAM label.
     // RAM  line suffix: " sfx  clock" → 1 + ram_sfx + 2 + 8
     // DISK line suffix: " sfx"        → 1 + disk_sfx
     let ram_suffix_vis = 1 + ram_sfx.len() + 2 + clock.len();
     let disk_suffix_vis = disk_sfx.as_ref().map(|s| 1 + s.len()).unwrap_or(0);
-    let right_prefix = 10; // label(4) + space + NNN% + space
+    let right_prefix = if m.disk_pct.is_some() {
+        disk_label.width().max(4) + 6
+    } else {
+        10
+    };
     let right_suffix_max = ram_suffix_vis.max(disk_suffix_vis);
     let down = format_rate(m.net_down_bps);
     let up = format_rate(m.net_up_bps);
@@ -578,7 +639,7 @@ fn render_lines(m: &Metrics, cols: usize, bg: &str) -> Vec<String> {
 
     // DISK
     if let (Some(dp), Some(ref ds)) = (m.disk_pct, &disk_sfx) {
-        let (content, vis) = render_right_cell("DISK", COLOR_DISK, dp, right_bar_w, ds, bg);
+        let (content, vis) = render_right_cell(&disk_label, COLOR_DISK, dp, right_bar_w, ds, bg);
         right_lines.push((content, vis));
     }
 
@@ -631,13 +692,8 @@ fn render_lines(m: &Metrics, cols: usize, bg: &str) -> Vec<String> {
     // ── GPU rows (full width) ────────────────────────────────────────────
     if !m.gpus.is_empty() {
         let n = m.gpus.len();
-        let model = m.gpus.first().map(|g| g.label.as_str()).unwrap_or("");
-        let total_g = m
-            .gpus
-            .first()
-            .map(|g| g.mem_total_mb as f64 / 1024.0)
-            .unwrap_or(0.0);
-        let vram_label = format!("{:.0}G ea", total_g);
+        let model = gpu_model_label(&m.gpus);
+        let vram_label = gpu_vram_label(&m.gpus);
         let has_vram = m.gpus.iter().any(|g| g.mem_total_mb > 0);
         let suffix_w = if has_vram {
             model.width().max(vram_label.len())
@@ -804,6 +860,7 @@ mod tests {
                 })
                 .collect(),
             disk_pct: Some(2.0),
+            disk_mount_label: "/",
             disk_used_gb: 11,
             disk_total_gb: 1858,
             net_down_bps: if network { 1_200_000.0 } else { 0.0 },
@@ -827,6 +884,87 @@ mod tests {
             }
         }
         result
+    }
+
+    #[test]
+    fn system_disk_ignores_boot_and_external_volumes_regardless_of_order() {
+        use std::path::Path;
+        let mut disks = [
+            (Path::new("/boot"), 100, 50),
+            (Path::new("/"), 1000, 250),
+            (Path::new("/Volumes/Backup"), 2000, 1500),
+        ];
+        for _ in 0..disks.len() {
+            assert_eq!(system_disk_usage(disks.into_iter()), Some(("/", 1000, 250)));
+            disks.rotate_left(1);
+        }
+        assert_eq!(system_disk_usage(std::iter::empty()), None);
+        assert_eq!(
+            system_disk_usage([(Path::new("/boot"), 100, 50)].into_iter()),
+            None
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_disk_prefers_writable_data_volume_over_system_snapshot() {
+        use std::path::Path;
+        let mut disks = [
+            (Path::new("/"), 1000, 250),
+            (Path::new("/System/Volumes/Data"), 1000, 200),
+        ];
+        for _ in 0..disks.len() {
+            assert_eq!(
+                system_disk_usage(disks.into_iter()),
+                Some(("Data", 1000, 200))
+            );
+            disks.reverse();
+        }
+    }
+
+    #[test]
+    fn disk_mount_is_visible_in_compact_and_wide_layouts() {
+        let mut metrics = sample(16, true, 0);
+        for mount in ["/", "Data"] {
+            metrics.disk_mount_label = mount;
+            for cols in [40, 80, 160] {
+                let lines: Vec<_> = render_lines(&metrics, cols, BG)
+                    .iter()
+                    .map(|line| visible(line))
+                    .collect();
+                let disk = lines.iter().find(|line| line.contains("DISK")).unwrap();
+                assert!(disk.contains(&format!("DISK {mount}")));
+                assert!(disk.contains("11/1858G"));
+                assert!(lines.iter().all(|line| line.width() <= cols));
+            }
+        }
+    }
+
+    #[test]
+    fn mixed_gpus_display_individual_models_and_capacities() {
+        let mut metrics = sample(16, false, 2);
+        metrics.gpus[1].label = "NVIDIA RTX 3090".into();
+        metrics.gpus[1].mem_total_mb = 24 * 1024;
+        let lines: Vec<_> = render_lines(&metrics, 160, BG)
+            .iter()
+            .map(|line| visible(line))
+            .collect();
+        let gpu = lines.iter().find(|line| line.contains("GPU0")).unwrap();
+        assert!(gpu.contains("GPU0 NVIDIA A100, GPU1 NVIDIA RTX 3090"));
+        let memory = lines.iter().find(|line| line.contains("MEM0")).unwrap();
+        assert!(memory.contains("MEM0 40G, MEM1 24G"));
+        assert!(!memory.contains(" ea"));
+        assert!(lines.iter().all(|line| line.width() <= 160));
+        metrics.gpus[1].mem_total_mb = 0;
+        assert_eq!(gpu_vram_label(&metrics.gpus), "MEM0 40G, MEM1 unknown");
+    }
+
+    #[test]
+    fn only_matching_gpu_capacities_share_an_each_label() {
+        let metrics = sample(16, false, 2);
+        assert_eq!(gpu_vram_label(&metrics.gpus), "40G ea");
+        assert_eq!(gpu_vram_label(&metrics.gpus[..1]), "40G");
+        assert_eq!(gpu_model_label(&metrics.gpus), "NVIDIA A100");
     }
 
     #[test]

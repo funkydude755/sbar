@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.3 — 2026-11-07 (beta)
+
+- Select and label the system disk instead of displaying the first enumerated volume. Prefer the writable Data volume on macOS, with the root filesystem as a fallback.
+- Show individual models and memory capacities for mixed GPUs; use a shared capacity only when all GPUs match.
+- Add regression coverage for disk selection, disk labels, and mixed GPU displays.
+- Document the source beta, contribution process, private vulnerability reporting, and release workflow. Homebrew remains on the stable v0.2.2 release.
+
 ## 0.2.2
 
 - Make the terminal layout regression independent of runner CPU labels and core counts, and verify that all mocked GPUs are present before checking compact-layout resize behavior.

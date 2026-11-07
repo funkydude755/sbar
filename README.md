@@ -2,15 +2,19 @@
 
 A live-updating status bar at the bottom of your terminal, written in Rust.
 
+**v0.2.3 beta:** the disk-selection and mixed-GPU fixes are available in the source release below. Homebrew currently installs the stable v0.2.2 release with prebuilt bottles.
+
 ```
  CPU  12% ██░░░░░░░░░░░░░░ Xeon 8259CL 48c │  RAM  42% ██████░░░░░░░░░░ 54/128G  17:32:07
-  0  3%  1 12%  2  8%  3  0%  4  5%  5 22% │ DISK   2% ░░░░░░░░░░░░░░░░ 11/1858G
+  0  3%  1 12%  2  8%  3  0%  4  5% 5 22% │ DISK / 2% ░░░░░░░░░░░░░░░░ 11/1858G
   6  1%  7  4%  8  0%  9 15% 10  2% 11  7% │ Download   1.2 MB/s Upload   340 KB/s
  GPU0  45% ██████░░░░░░░░░░ │ GPU1  38% █████░░░░░░░░░░░ │ NVIDIA A100
  MEM0  62% █████████░░░░░░░ │ MEM1  51% ████████░░░░░░░░ │ 40G ea
 ```
 
 Updates every second. Bars scale to fill your terminal width. Per-core CPU grid, multi-GPU utilization and VRAM, network download/upload throughput.
+
+The disk meter in v0.2.3 shows the root filesystem (`DISK /`). On macOS it prefers the writable `/System/Volumes/Data` volume (`DISK Data`), with `/` as a fallback. If neither system volume is reported, the disk meter is omitted. Mixed GPUs show their individual models and memory capacities when space allows. Network rates sum all reported interfaces, including loopback and virtual interfaces.
 
 Narrow terminals use a compact layout. Short terminals show fewer metrics to leave room for the shell. Metrics run in a background worker; GPU probes time out after 750 ms so a slow driver cannot block typing.
 
@@ -28,14 +32,14 @@ Without a compatible bottle, or with `--build-from-source`, Homebrew builds the 
 
 If `sbar` is already installed from another tap, run `brew uninstall sbar` before installing it from this tap.
 
-### From source
+### From source (v0.2.3 beta)
 
 Build from source with current stable Rust and Cargo, Git, Make, and a C toolchain/linker. On macOS, install the Xcode Command Line Tools; on Linux, install your distribution's C build tools. Python 3 is needed only for the regression tests.
 
 ```bash
 git clone https://github.com/funkydude755/sbar.git
 cd sbar
-git checkout v0.2.2
+git checkout v0.2.3
 make install PREFIX="$HOME/.local"
 "$HOME/.local/bin/sbar" --version
 ```
@@ -88,6 +92,8 @@ The bar runs continuously. CPU, memory, disk, and network metrics use native sys
 ## Development
 
 With Rust and Python 3 installed, run `make test` for unit tests and isolated PTY regression tests against the debug binary. CI runs on macOS and Linux and checks formatting, Clippy, unit tests, and PTY regressions against both debug and release binaries.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for bug reports and pull requests, [SECURITY.md](SECURITY.md) for private vulnerability reports, and [RELEASING.md](RELEASING.md) for the release checklist.
 
 ## Supported platforms
 
