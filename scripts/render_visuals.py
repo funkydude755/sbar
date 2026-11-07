@@ -44,13 +44,15 @@ def bar(column, row, pct, width, color):
 
 
 SAMPLES = [
-    (18, 42, 31, 24, "1.2 MB/s", "340 KB/s"),
-    (46, 43, 55, 41, "2.4 MB/s", "480 KB/s"),
-    (72, 45, 78, 64, "3.8 MB/s", "620 KB/s"),
-    (39, 45, 62, 49, "1.7 MB/s", "410 KB/s"),
-    (12, 42, 28, 19, "840 KB/s", "120 KB/s"),
-    (18, 42, 31, 24, "1.2 MB/s", "340 KB/s"),
+    (38, 45, 92, 94, "1.2 MB/s", "340 KB/s"),
+    (46, 46, 97, 95, "2.4 MB/s", "480 KB/s"),
+    (52, 46, 94, 98, "3.8 MB/s", "620 KB/s"),
+    (43, 46, 98, 96, "1.7 MB/s", "410 KB/s"),
+    (41, 45, 95, 93, "840 KB/s", "120 KB/s"),
+    (48, 46, 96, 97, "1.2 MB/s", "340 KB/s"),
 ]
+
+TRAINING_LOSSES = ["0.4382", "0.4267", "0.4195", "0.4071", "0.3986", "0.3914"]
 
 
 def metrics(index):
@@ -61,7 +63,7 @@ def metrics(index):
               cell(55, 0, "RAM", PURPLE, font_weight="bold"),
               cell(60, 0, f"{ram:3}%", PURPLE), bar(66, 0, ram, 16, PURPLE),
               cell(84, 0, f"{round(128 * ram / 100)}/128G", MUTED),
-              cell(96, 0, f"17:32:{7 + index:02}", MUTED)]
+              cell(96, 0, f"17:32:{7 + index * 2:02}", MUTED)]
     for row in [0, 1, 2]:
         chunks.append(cell(52, row, "│", "#445168"))
     for core in range(8):
@@ -79,27 +81,24 @@ def metrics(index):
                    cell(col + 5, 3, f"{pct:3}%", GREEN),
                    bar(col + 11, 3, pct, 19, GREEN),
                    cell(col, 4, f"MEM{gpu}", PURPLE, font_weight="bold"),
-                   cell(col + 5, 4, f"{62 - gpu * 11:3}%", PURPLE),
-                   bar(col + 11, 4, 62 - gpu * 11, 19, PURPLE)]
+                   cell(col + 5, 4, f"{78 - gpu:3}%", PURPLE),
+                   bar(col + 11, 4, 78 - gpu, 19, PURPLE)]
     chunks += [cell(34, 3, "│", "#445168"), cell(34, 4, "│", "#445168"),
                cell(78, 3, "NVIDIA A100", MUTED), cell(78, 4, "40G ea", MUTED)]
     return "".join(chunks)
 
 
 def shell(index):
+    step = 840 + index * 40
+    percent = step // 20
+    filled = round(percent / 5)
+    progress = "━" * filled + "─" * (20 - filled)
     chunks = [text(90, 216, "❯", CYAN), text(112, 216, "sbar"),
-              text(90, 246, "❯", CYAN), text(112, 246, "cargo build --release")]
-    if index in (1, 2, 3, 4, 5):
-        chunks += [text(112, 277, "Compiling", GREEN),
-                   text(219, 277, "my-project v0.1.0", MUTED)]
-    if index in (3, 4, 5):
-        chunks += [text(112, 307, "Finished", GREEN),
-                   text(219, 307, "release profile in 4.2s", MUTED),
-                   text(90, 338, "❯", CYAN),
-                   '<rect class="cursor" x="112" y="324" width="8" height="17" fill="#68e0e8"/>']
-    else:
-        chunks.append(text(112, 318, "Building", YELLOW))
-        chunks.append(text(219, 318, "[" + "━" * (index * 4 + 4) + "─" * (16 - index * 4) + "]", MUTED))
+              text(90, 246, "❯", CYAN),
+              text(112, 246, "torchrun --nproc_per_node=2 train.py --epochs 10"),
+              text(112, 277, "Training ResNet-50 · 2 GPUs · mixed precision", GREEN),
+              text(112, 307, f"Epoch 03/10  [{progress}]  {percent}%  {step}/2000", CYAN),
+              text(112, 338, f"loss {TRAINING_LOSSES[index]}  ·  lr 0.001  ·  checkpoint: epoch_02.pt", MUTED)]
     return "".join(chunks)
 
 
@@ -109,8 +108,6 @@ def document(animated):
         style += """
 .sample { opacity: 0; }
 .sample.first { opacity: 1; }
-.cursor { animation: blink 1.2s step-end infinite; }
-@keyframes blink { 0%, 50%, 100% { opacity: 1; } 51%, 99% { opacity: 0; } }
 """
         for i in range(6):
             start, end = i * 100 / 6, (i + 1) * 100 / 6
@@ -127,12 +124,11 @@ def document(animated):
 @media (prefers-reduced-motion: reduce) {
   .sample { animation: none !important; opacity: 0 !important; }
   .sample.first { opacity: 1 !important; }
-  .cursor { animation: none !important; }
 }
 """
     parts = [f'''<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title description">
 <title id="title">sbar — live stats, same terminal</title>
-<desc id="description">Illustrative terminal demo: a command runs above a persistent status bar with updating CPU, memory, GPU, disk, and network metrics. Install with brew install funkydude755/tap/sbar. Supports macOS and Linux. The metrics and build output are examples.</desc>
+<desc id="description">Illustrative terminal demo: a model trains on two GPUs above a persistent status bar with updating CPU, memory, GPU, disk, and network metrics. Training progress advances as loss decreases. Install with brew install funkydude755/tap/sbar. Supports macOS and Linux. The metrics and training output are examples.</desc>
 <defs>
   <linearGradient id="background" x2="1" y2="1"><stop stop-color="#0a1220"/><stop offset="1" stop-color="#11101e"/></linearGradient>
   <linearGradient id="edge"><stop stop-color="#68e0e8"/><stop offset=".54" stop-color="#7994e5"/><stop offset="1" stop-color="#c3a0f5"/></linearGradient>
@@ -155,7 +151,7 @@ def document(animated):
              '<circle cx="87" cy="156" r="5" fill="#de747b"/>',
              '<circle cx="106" cy="156" r="5" fill="#e9cc83"/>',
              '<circle cx="125" cy="156" r="5" fill="#9bddab"/>',
-             text(640, 161, "sbar — ~/project", MUTED, 13, text_anchor="middle"),
+             text(640, 161, "sbar — ~/training", MUTED, 13, text_anchor="middle"),
              '<circle cx="1145" cy="156" r="3" fill="#68e0e8"/>',
              text(1158, 160, "LIVE", CYAN, 11, letter_spacing="1"),
              '<rect x="65" y="382" width="1150" height="144" fill="#171e2a"/>',
@@ -171,7 +167,7 @@ def document(animated):
               text(82, 601, "$", CYAN, 16),
               text(106, 601, "brew install funkydude755/tap/sbar", INK, 16),
               text(1216, 600, "macOS + Linux  ·  Written in Rust", INK, 16, SANS, text_anchor="end"),
-              text(1216, 624, "Illustrative demo · example metrics and build output", MUTED, 11, SANS, text_anchor="end"),
+              text(1216, 624, "Illustrative demo · example metrics and training output", MUTED, 11, SANS, text_anchor="end"),
               '</svg>']
     return "\n".join(parts)
 
