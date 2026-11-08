@@ -15,8 +15,6 @@ sbar
 
 Type `exit` or Ctrl+D to return to your normal shell. [Installation details](#install) · [How it works](#how-it-works) · [Report a bug](https://github.com/funkydude755/sbar/issues/new)
 
-**v0.2.3 beta:** the disk-selection and mixed-GPU fixes are available in the [source release](#from-source-v023-beta). Homebrew currently installs stable v0.2.2 with prebuilt bottles.
-
 ## Install
 
 ### Homebrew (macOS and Linux)
@@ -27,14 +25,14 @@ Without a compatible bottle, or with `--build-from-source`, Homebrew builds the 
 
 If `sbar` is already installed from another tap, run `brew uninstall sbar` before installing it from this tap.
 
-### From source (v0.2.3 beta)
+### From source
 
 Build from source with current stable Rust and Cargo, Git, Make, and a C toolchain/linker. On macOS, install the Xcode Command Line Tools; on Linux, install your distribution's C build tools. Python 3 is needed only for the regression tests.
 
 ```bash
 git clone https://github.com/funkydude755/sbar.git
 cd sbar
-git checkout v0.2.3
+git checkout v0.2.4
 make install PREFIX="$HOME/.local"
 "$HOME/.local/bin/sbar" --version
 ```
@@ -56,7 +54,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release changes.
 
 `sbar` runs your `$SHELL` inside a PTY and pins the status bar below it. Metrics update every second in a background worker, with bounded GPU probes. The layout adapts to terminal size, and terminal settings are restored on exit.
 
-CPU, memory, disk, and network metrics use native system APIs. Optional GPU metrics use `ioreg` on Apple Silicon or `nvidia-smi` on Linux. Network rates sum all interfaces. In v0.2.3, the disk meter selects the system volume (the writable Data volume on macOS), and mixed GPUs show individual models and capacities when space allows.
+CPU, memory, disk, and network metrics use native system APIs. Optional GPU metrics use `ioreg` on Apple Silicon or `nvidia-smi` on Linux. Network rates sum all interfaces. The disk meter selects the system volume (the writable Data volume on macOS), and mixed GPUs show individual models and capacities when space allows.
 
 ## Terminal compatibility
 
