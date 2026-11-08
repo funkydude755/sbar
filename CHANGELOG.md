@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.4 — 2026-11-08
+
+- Release the system-disk selection and mixed-GPU label fixes from v0.2.3 as stable.
+- Update Homebrew bottles for Apple Silicon and Intel Macs, and ARM64 and x86-64 Linux.
+- Simplify repository documentation and add an illustrative model-training demo.
+
 ## 0.2.3 — 2026-11-07 (beta)
 
 - Select and label the system disk instead of displaying the first enumerated volume. Prefer the writable Data volume on macOS, with the root filesystem as a fallback.
