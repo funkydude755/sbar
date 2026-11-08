@@ -5,6 +5,7 @@
 - Release the system-disk selection and mixed-GPU label fixes from v0.2.3 as stable.
 - Update Homebrew bottles for Apple Silicon and Intel Macs, and ARM64 and x86-64 Linux.
 - Simplify repository documentation and add an illustrative model-training demo.
+- Make the alternate-screen regression wait for shell startup on slower machines.
 
 ## 0.2.3 — 2026-11-07 (beta)
 

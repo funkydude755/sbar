@@ -413,7 +413,8 @@ class PtyTests(unittest.TestCase):
 
     def test_alternate_screen_suspends_bar_and_uses_full_size(self):
         shell = self.script("alternate-shell", "import os,time,tty\ntty.setraw(0)\n"
-                            "os.write(1,b'\\x1b[24;15HPROMPT')\nos.read(0,1)\n"
+                            "rows=os.get_terminal_size(0).lines\n"
+                            "os.write(1,('\\x1b['+str(rows)+';15HPROMPT').encode())\nos.read(0,1)\n"
                             "os.write(1,b'\\x1b[?10')\ntime.sleep(1.1)\n"
                             "os.write(1,b'49hALT_READY')\nos.read(0,1)\n"
                             "os.write(1,('ROWS:'+str(os.get_terminal_size(0).lines)).encode())\n"
@@ -421,6 +422,11 @@ class PtyTests(unittest.TestCase):
                             "os.write(1,b'DONE')\n")
         session = self.session(shell)
         screen = Screen()
+        # A slow shell can start after the first metrics frame. Wait for its
+        # prompt and use its actual PTY dimensions before checking bar behavior.
+        output = read_until(session.master, b"PROMPT")
+        self.assertIn(b"PROMPT", output)
+        feed_screen(session, screen, output)
         output = read_until(session.master, b"CPU", timeout=4)
         self.assertIn(b"CPU", output)
         feed_screen(session, screen, output)
