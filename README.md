@@ -1,4 +1,4 @@
-# sbar
+# sbar — a terminal system monitor for macOS and Linux
 
 Keep CPU, RAM, GPU, disk, and network stats visible while you work in your shell. A persistent terminal status bar for macOS and Linux, written in Rust.
 
